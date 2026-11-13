@@ -1,0 +1,254 @@
+{
+  "name": "Automated Emailer (TEST)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "a33cf072-1a4f-408f-ab71-7b1082c3a0f2",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "testMode",
+              "type": "boolean",
+              "value": true
+            },
+            {
+              "id": "c2",
+              "name": "masterFolderId",
+              "type": "string",
+              "value": "PASTE-YOUR-FOLDER-ID-HERE"
+            },
+            {
+              "id": "c3",
+              "name": "masterFileName",
+              "type": "string",
+              "value": "Schools"
+            },
+            {
+              "id": "c4",
+              "name": "schoolFilesFolderId",
+              "type": "string",
+              "value": "PASTE-YOUR-FOLDER-ID-HERE"
+            },
+            {
+              "id": "c5",
+              "name": "senderName",
+              "type": "string",
+              "value": "Your Name"
+            },
+            {
+              "id": "c6",
+              "name": "senderDesignation",
+              "type": "string",
+              "value": "Your Role"
+            },
+            {
+              "id": "c7",
+              "name": "organisationName",
+              "type": "string",
+              "value": "Your Team"
+            },
+            {
+              "id": "c8",
+              "name": "subjectTemplate",
+              "type": "string",
+              "value": "Results - {School} ({State})"
+            },
+            {
+              "id": "c10",
+              "name": "ccPrincipal",
+              "type": "boolean",
+              "value": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bb8ebac0-91b6-454b-bad4-47716399b8ee",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=name = '{{ $('Config').first().json.masterFileName }}' and '{{ $('Config').first().json.masterFolderId }}' in parents and trashed = false",
+        "limit": 1,
+        "filter": {},
+        "options": {
+          "fields": [
+            "id",
+            "name"
+          ]
+        }
+      },
+      "id": "0a5d3e7e-c313-4ffd-9aae-c0cb320b0554",
+      "name": "Find Master File",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        480,
+        0
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.id }}"
+        },
+        "options": {
+          "googleFileConversion": {
+            "conversion": {
+              "sheetsToFormat": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            }
+          }
+        }
+      },
+      "id": "522ec74b-b0fe-4fec-9eda-4186d8fb2fe5",
+      "name": "Download Master File",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {
+          "headerRow": true,
+          "includeEmptyCells": true,
+          "rawData": false,
+          "sheetName": "School Directory"
+        }
+      },
+      "id": "02b1a049-8845-4703-8ae6-d4deb9fde55c",
+      "name": "Read School Directory",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Config').first().json;\nconst BS = String.fromCharCode(92);\nconst NL = String.fromCharCode(10);\nconst isTrue = v => v === true || String(v).toLowerCase() === 'true';\nconst testMode = isTrue(cfg.testMode);\nconst ccPrincipal = isTrue(cfg.ccPrincipal);\nconst emailRe = new RegExp('^[^@ ]+@[^@ ]+[.][a-z]{2,24}$');\nconst badTlds = ['comm', 'con', 'cmo', 'ocm', 'coom', 'cm', 'om', 'inn', 'orgg', 'nett'];\nconst norm = v => (v === undefined || v === null) ? '' : String(v).trim();\nconst splitEmails = v => norm(v).split(NL).join(';').split(',').join(';').split(';').map(e => e.trim().toLowerCase()).filter(e => e.length > 0);\nconst uniq = a => a.filter((x, i) => a.indexOf(x) === i);\nconst get = (row, name) => {\n  if (row[name] !== undefined) return row[name];\n  const key = Object.keys(row).find(k => k.trim().toLowerCase() === name.toLowerCase());\n  return key ? row[key] : '';\n};\nconst esc = s => norm(s).split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;');\nconst qEsc = s => norm(s).split(BS).join(BS + BS).split(\"'\").join(BS + \"'\");\nconst generic = ['', 'coordinator', 'school coordinator', 'sir', 'madam', 'sir/madam', 'na', 'n/a', '-', 'principal', 'none', 'nil'];\n\nconst out = [];\nlet idx = 0;\nfor (const item of $input.all()) {\n  const row = item.json;\n  const school = norm(get(row, 'School'));\n  if (!school) continue;\n  idx += 1;\n  const state = norm(get(row, 'State'));\n  const city = norm(get(row, 'City'));\n  const issuesRaw = norm(get(row, 'Email Issues (check manually)'));\n  const issueList = splitEmails(issuesRaw);\n  const extraIssues = [];\n  const valid = list => list.filter(e => {\n    if (issueList.indexOf(e) !== -1) return false;\n    const tld = e.split('.').pop();\n    if (!emailRe.test(e) || badTlds.indexOf(tld) !== -1) { extraIssues.push(e); return false; }\n    return true;\n  });\n  let to;\n  let cc = [];\n  if (ccPrincipal) {\n    to = uniq(valid(splitEmails(get(row, 'Coordinator Email'))));\n    cc = uniq(valid(splitEmails(get(row, 'Principal Email')))).filter(e => to.indexOf(e) === -1);\n  } else {\n    to = uniq(valid(splitEmails(get(row, 'Send To (all valid emails)'))));\n  }\n  const allIssues = uniq(issueList.concat(extraIssues));\n\n  const names = norm(get(row, 'Coordinator Name')).split(';').map(n => n.trim()).filter(n => generic.indexOf(n.toLowerCase()) === -1);\n  const greeting = names.length ? 'Dear ' + names.join(', ') + ',' : 'Dear Sir/Madam,';\n\n  const tpl = norm(cfg.subjectTemplate) || 'Results - {School} ({State})';\n  const subject = (testMode ? '[TEST] ' : '') + tpl.split('{School}').join(school).split('{State}').join(state).split('{City}').join(city);\n\n  const students = norm(get(row, 'Students Ranked')) || '0';\n  const teachers = norm(get(row, 'Teachers Ranked')) || '0';\n  const fileName = norm(get(row, 'File Name'));\n  const driveLink = norm(get(row, 'Drive Link'));\n  const m = driveLink.match(new RegExp('/d/([^/?#]+)')) || driveLink.match(new RegExp('[?&]id=([^&#]+)'));\n  const fileId = m ? m[1] : '';\n\n  const htmlBody = '<p>' + esc(greeting) + '</p>'\n    + '<p>Greetings from the ' + esc(cfg.organisationName) + '.</p>'\n    + '<p>We are pleased to share the results for <b>' + esc(school) + '</b>' + (city ? ', ' + esc(city) : '') + '.</p>'\n    + '<ul><li>Students ranked: <b>' + esc(students) + '</b></li><li>Teachers ranked: <b>' + esc(teachers) + '</b></li></ul>'\n    + '<p>We request you to review the results and share them with the concerned students and teachers.</p>'\n    + '<p>For any clarification, please reply to this email.</p>'\n    + '<p>Warm regards,<br>' + esc(cfg.senderName) + '<br>' + esc(cfg.senderDesignation) + '<br>' + esc(cfg.organisationName) + '</p>';\n\n  out.push({ json: {\n    rowKey: 'row-' + idx,\n    school, state, city,\n    coordinatorName: norm(get(row, 'Coordinator Name')),\n    to: to.join(', '),\n    cc: cc.join(', '),\n    hasRecipient: to.length > 0,\n    emailIssues: allIssues.join('; '),\n    studentsRanked: students,\n    teachersRanked: teachers,\n    fileName, driveLink, fileId,\n    tenantId: norm(get(row, 'Tenant ID')),\n    driveQuery: \"name = '\" + qEsc(fileName) + \"' and '\" + qEsc(cfg.schoolFilesFolderId) + \"' in parents and trashed = false\",\n    greeting, subject, htmlBody,\n  } });\n}\nreturn out;"
+      },
+      "id": "c32088f9-bb36-4f6e-8e31-105b072db8ab",
+      "name": "Clean & Validate Recipients",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "e656435d-fa5d-4313-ba96-0f3b82f2e6e5",
+      "name": "Loop Over Schools",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        204,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "h1",
+              "leftValue": "={{ $json.hasRecipient }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "830bd206-3452-41fd-8b43-ca57316d1039",
+      "name": "Has Valid Recipient?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        483,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.htmlBody }}",
+        "options": {
+          "ccList": "={{ $json.cc }}",
+          "sendTo": "={{ $json.to }}"
+        }
+      },
+      "id": "80e60b31-0d8e-4be4-82d9-c9f001486b59",
+      "name": "Create Gmail Draft",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        260
+      ],
+      "webhookId": "96f06ee8-b346-4527-a88f-8ae65df94bee"
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "id": "df9d8662-7c92-4dc7-b9c9-0b6c893c7a3e",
+      "name": "Pause 2s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        260
+      ],
+      "webhookId": "0a521bfb-0084-4139-9fae-f364727aed14"
+    }
+  ],
+  "connections": {},
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

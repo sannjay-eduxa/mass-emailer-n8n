@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Build Automated Emailer Workflow in n8n: a hands-on Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#F6F8FA; --surface:#FFFFFF; --surface2:#EEF2F6; --ink:#18212B; --ink2:#4A5665; --line:#DCE2E9; --axis:#6B7785;
+  --brand:#0B7A75; --brand-ink:#075E5A; --brand-soft:#E2F2F0;
+  --accent:#F2B01E; --accent-soft:#FFF3D1;
+  --good:#2F9E44; --good-soft:#E3F4E7; --bad:#D6336C; --bad-soft:#FBE7EF; --warn:#E8590C; --warn-soft:#FDEBDD;
+  --violet:#6D4BC8; --violet-soft:#EDE8FA; --blue:#2F6FDE; --blue-soft:#E6EEFC;
+  --k-trigger:#2F9E44; --k-app:#2F6FDE; --k-code:#7B4FD6; --k-decision:#E8590C; --k-shape:#0C8599; --k-flow:#64748B; --k-ghost:#94A3B8;
+  --code-bg:#121B25; --code-ink:#E3EAF1; --code-line:#2A3745;
+  --sans:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;
+  --serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E141B; --surface:#161F29; --surface2:#1C2733; --ink:#E8EDF2; --ink2:#A9B5C2; --line:#2A3644; --axis:#8795A5;
+    --brand:#3CC4BC; --brand-ink:#7FE0D9; --brand-soft:#11302E;
+    --accent:#F5C451; --accent-soft:#3A2F0E;
+    --good:#5BCB74; --good-soft:#13301C; --bad:#FF7BA8; --bad-soft:#3A1624; --warn:#FF9A5C; --warn-soft:#3A2010;
+    --violet:#B39CFF; --violet-soft:#241C45; --blue:#7FA9FF; --blue-soft:#162747;
+    --k-trigger:#5BCB74; --k-app:#6EA0FF; --k-code:#A98BFF; --k-decision:#FF8F4F; --k-shape:#36C2D6; --k-flow:#9AA9BA; --k-ghost:#8795A5;
+    --code-bg:#0A1017; --code-ink:#E3EAF1; --code-line:#26323F;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E141B; --surface:#161F29; --surface2:#1C2733; --ink:#E8EDF2; --ink2:#A9B5C2; --line:#2A3644; --axis:#8795A5;
+  --brand:#3CC4BC; --brand-ink:#7FE0D9; --brand-soft:#11302E;
+  --accent:#F5C451; --accent-soft:#3A2F0E;
+  --good:#5BCB74; --good-soft:#13301C; --bad:#FF7BA8; --bad-soft:#3A1624; --warn:#FF9A5C; --warn-soft:#3A2010;
+  --violet:#B39CFF; --violet-soft:#241C45; --blue:#7FA9FF; --blue-soft:#162747;
+  --k-trigger:#5BCB74; --k-app:#6EA0FF; --k-code:#A98BFF; --k-decision:#FF8F4F; --k-shape:#36C2D6; --k-flow:#9AA9BA; --k-ghost:#8795A5;
+  --code-bg:#0A1017; --code-ink:#E3EAF1; --code-line:#26323F;
+  color-scheme:dark;
+}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 16px);scroll-behavior:smooth}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 18px/1.68 var(--serif);-webkit-font-smoothing:antialiased}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+a{color:var(--brand-ink)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px}
+h1,h2,h3,h4{font-family:var(--sans);line-height:1.15;letter-spacing:-.01em;margin:0}
+code,pre,kbd{font-family:var(--mono)}
+p{margin:0 0 1em}
+
+/* ---- layout ---- */
+.shell{display:grid;grid-template-columns:272px minmax(0,1fr);max-width:1360px;margin:0 auto}
+.rail{position:sticky;top:env(safe-area-inset-top,0px);align-self:start;max-height:calc(100vh - env(safe-area-inset-top,0px));overflow:auto;padding:28px 18px 28px 24px;border-right:1px solid var(--line);font-family:var(--sans);font-size:14.5px;line-height:1.35}
+.rail h2{font-size:17px;margin-bottom:4px}
+.rail .sub{color:var(--ink2);font-size:13px;margin-bottom:14px}
+.bar{height:8px;border-radius:99px;background:var(--surface2);overflow:hidden;margin:6px 0 4px}
+.bar>i{display:block;height:100%;width:0;background:var(--brand);transition:width .4s}
+.rail .pct{font-size:12.5px;color:var(--ink2);margin-bottom:16px}
+.rail nav a{display:flex;gap:10px;align-items:baseline;padding:7px 8px;border-radius:8px;text-decoration:none;color:var(--ink2)}
+.rail nav a:hover{background:var(--surface2);color:var(--ink)}
+.rail nav a.on{background:var(--brand-soft);color:var(--brand-ink);font-weight:700}
+.rail nav .tick{flex:0 0 16px;height:16px;border-radius:50%;border:2px solid var(--line);position:relative;top:2px}
+.rail nav a.done .tick{background:var(--good);border-color:var(--good)}
+.rail nav a.done .tick::after{content:"";position:absolute;left:4px;top:1px;width:4px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.rail .grp{margin:16px 8px 4px;font-size:12.5px;color:var(--ink2);font-weight:700}
+main{padding:44px clamp(20px,5vw,64px) 120px;min-width:0}
+.wrap{max-width:980px}
+.prose{max-width:68ch}
+@media (max-width:980px){
+  .shell{display:block}
+  .rail{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line);padding:18px 20px}
+  .rail nav{display:none}
+  .rail.open nav{display:block}
+  .railbtn{display:inline-block!important}
+  main{padding-top:28px}
+}
+.railbtn{display:none;margin-top:8px;font:600 14px var(--sans);padding:8px 14px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+
+/* ---- hero ---- */
+.hero{padding:8px 0 48px;border-bottom:1px solid var(--line);margin-bottom:56px}
+.hero h1{font-size:clamp(34px,5.4vw,58px);font-weight:700;max-width:16ch;margin-bottom:18px}
+.lede{font-size:clamp(19px,2.2vw,22px);max-width:56ch;color:var(--ink2)}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0 0;padding:0;list-style:none;font-family:var(--sans);font-size:14.5px}
+.chips li{padding:7px 14px;border-radius:99px;background:var(--surface);border:1px solid var(--line)}
+.heroviz{margin:34px 0 0;padding:20px;background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow-x:auto}
+.heroviz svg{display:block;width:100%;min-width:620px;height:auto;font-family:var(--sans)}
+
+/* ---- chapters ---- */
+.chapter{padding:0 0 72px;margin-bottom:56px;border-bottom:1px solid var(--line)}
+.chapter>h2{font-size:clamp(28px,3.6vw,40px);margin-bottom:10px}
+.chapter>.meta{font-family:var(--sans);color:var(--ink2);font-size:14.5px;margin-bottom:26px}
+.chapter h3{font-size:24px;margin:44px 0 12px}
+.chapter h4{font-size:18px;margin:26px 0 8px}
+.pill{display:inline-block;font-family:var(--sans);font-size:13px;font-weight:700;padding:2px 10px;border-radius:99px;background:var(--brand-soft);color:var(--brand-ink);vertical-align:middle;margin-right:8px}
+ul.ticks{padding-left:1.2em}ul.ticks li{margin:.35em 0}
+code{font-size:.84em;background:var(--surface2);padding:.12em .4em;border-radius:5px;overflow-wrap:anywhere}
+pre code{background:none;padding:0;font-size:inherit}
+
+/* ---- callouts ---- */
+.co{--c:var(--brand);--cs:var(--brand-soft);border-left:5px solid var(--c);background:var(--cs);border-radius:0 12px 12px 0;padding:14px 20px 6px;margin:26px 0;font-size:17px;line-height:1.6}
+.co>.t{font-family:var(--sans);font-weight:700;font-size:15px;color:var(--c);margin-bottom:4px;display:block}
+.co.goal{--c:var(--brand-ink);--cs:var(--brand-soft)}
+.co.predict{--c:var(--violet);--cs:var(--violet-soft)}
+.co.build{--c:var(--blue);--cs:var(--blue-soft)}
+.co.check{--c:var(--good);--cs:var(--good-soft)}
+.co.why{--c:var(--brand-ink);--cs:var(--surface2)}
+.co.warn{--c:var(--warn);--cs:var(--warn-soft)}
+.co.recall{--c:#9A6B00;--cs:var(--accent-soft)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .co.recall{--c:var(--accent)}}
+:root[data-theme="dark"] .co.recall{--c:var(--accent)}
+.co ul,.co ol{padding-left:1.2em;margin:.3em 0 .9em}
+details.rv{margin:0 0 14px}
+details.rv>summary{cursor:pointer;font-family:var(--sans);font-weight:600;font-size:16px;list-style:none;padding:10px 14px;border-radius:10px;background:var(--surface);border:1px solid var(--line)}
+details.rv>summary::-webkit-details-marker{display:none}
+details.rv>summary::before{content:"Show the answer";float:right;font-size:13px;font-weight:700;color:var(--brand-ink)}
+details.rv[open]>summary::before{content:"Hide"}
+details.rv>div{padding:10px 14px 2px}
+
+/* ---- steps ---- */
+ol.steps{list-style:none;counter-reset:s;padding:0;margin:14px 0 22px}
+ol.steps>li{counter-increment:s;position:relative;padding:14px 112px 8px 58px;margin:0 0 10px;background:var(--surface);border:1px solid var(--line);border-radius:14px;font-size:17px;line-height:1.6}
+ol.steps>li::before{content:counter(s);position:absolute;left:14px;top:14px;width:30px;height:30px;border-radius:50%;background:var(--surface2);display:grid;place-items:center;font:700 14px var(--sans);color:var(--ink2)}
+ol.steps>li.done{background:var(--good-soft);border-color:var(--good)}
+ol.steps>li.done::before{content:"✓";background:var(--good);color:#fff}
+.stepbtn{position:absolute;right:10px;top:12px;white-space:nowrap;font:600 12.5px var(--sans);border:1px solid var(--line);background:var(--surface);color:var(--ink2);border-radius:99px;padding:4px 10px;cursor:pointer}
+ol.steps>li.done .stepbtn{background:var(--good);border-color:var(--good);color:#fff}
+ol.steps>li strong{font-family:var(--sans)}
+ol.steps ul{padding-left:1.1em;margin:.3em 0 .8em}
+
+/* ---- code ---- */
+.codewrap{position:relative;margin:18px 0 24px}
+.codewrap .cap{font:600 13px var(--sans);color:var(--ink2);margin-bottom:6px}
+pre.code{margin:0;background:var(--code-bg);color:var(--code-ink);border:1px solid var(--code-line);border-radius:12px;padding:16px 18px;overflow:auto;font-size:13.5px;line-height:1.6;tab-size:2}
+.copy{position:absolute;right:10px;top:34px;font:600 12px var(--sans);background:var(--code-line);color:var(--code-ink);border:0;border-radius:99px;padding:5px 12px;cursor:pointer}
+details.more{margin:14px 0}
+details.more>summary{cursor:pointer;font-family:var(--sans);font-weight:600;font-size:16px;color:var(--brand-ink)}
+
+/* ---- tables ---- */
+.tscroll{overflow-x:auto;margin:18px 0 26px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table.tbl{border-collapse:collapse;width:100%;font-family:var(--sans);font-size:15px;line-height:1.5;min-width:600px}
+.tbl th{text-align:left;font-weight:700;background:var(--surface2);padding:10px 14px;font-size:14px}
+.tbl td{padding:10px 14px;border-top:1px solid var(--line);vertical-align:top}
+.tbl td:first-child{font-weight:600}
+.kdot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;background:var(--k)}
+
+/* ---- figures ---- */
+.fig{margin:26px 0 30px;background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.fig .scroll{overflow-x:auto;padding:18px 14px 8px;background-image:radial-gradient(var(--line) 1px,transparent 1.2px);background-size:18px 18px}
+.fig svg.graph{display:block;width:100%;height:auto;font-family:var(--sans)}
+.gnode{cursor:pointer;outline:none}
+.gnode:hover .nb,.gnode:focus-visible .nb{stroke-width:3}
+.gnode.sel .nb{stroke-width:3.4}
+.gnode:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:8px}
+.fig .hint{font:500 13px var(--sans);color:var(--ink2);padding:0 18px 10px;text-align:center}
+.nodepanel{border-top:1px solid var(--line);padding:16px 20px 12px;background:var(--surface);font-size:16px;line-height:1.55;min-height:96px}
+.nodepanel .nh{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:6px;font-family:var(--sans)}
+.nodepanel .nh b{font-size:19px}
+.nodepanel .kc{font-size:12.5px;font-weight:700;padding:2px 10px;border-radius:99px;background:var(--surface2);color:var(--ink2)}
+.nodepanel dl{margin:0;display:grid;grid-template-columns:110px 1fr;gap:4px 14px}
+.nodepanel dt{font:700 14px var(--sans);color:var(--ink2)}
+.nodepanel dd{margin:0}
+.nodepanel .empty{color:var(--ink2);font-family:var(--sans)}
+@media (max-width:560px){.nodepanel dl{grid-template-columns:1fr}.nodepanel dt{margin-top:6px}}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font:500 13.5px var(--sans);color:var(--ink2);margin:6px 0 0}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.legend i{width:14px;height:14px;border-radius:4px;border:2px solid var(--k);background:var(--k);opacity:.9}
+.legend i.hex{clip-path:polygon(18% 0,82% 0,100% 50%,82% 100%,18% 100%,0 50%)}
+.legend i.pill{border-radius:99px}
+.minis{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px;margin:22px 0}
+.minis .fig{margin:0}
+.minis figcaption{padding:10px 16px 14px;font:500 15px/1.45 var(--sans);color:var(--ink2)}
+.minis .fig .scroll{background:none;padding:12px 10px 0}
+
+/* ---- items demo ---- */
+.items{display:grid;grid-template-columns:minmax(0,1fr) 40px minmax(0,1.1fr);gap:8px;align-items:center;margin:22px 0}
+.items .arrow{font:700 28px var(--sans);color:var(--axis);text-align:center}
+.sheet{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden;font:14.5px/1.4 var(--sans)}
+.sheet table{border-collapse:collapse;width:100%}
+.sheet th,.sheet td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left}
+.sheet th{background:var(--surface2);font-size:13px}
+.sheet tr:last-child td{border-bottom:0}
+.cards{display:grid;gap:8px}
+.card{border:1px solid var(--line);border-left:5px solid var(--brand);border-radius:10px;background:var(--surface);padding:8px 12px;font:13.5px/1.45 var(--mono)}
+@media (max-width:700px){.items{grid-template-columns:1fr}.items .arrow{transform:rotate(90deg)}}
+.twocol{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin:22px 0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px 8px;font-size:16.5px;line-height:1.55}
+.panel h4{margin:0 0 6px;font-size:19px}
+.panel.hl{border-color:var(--brand);box-shadow:inset 0 0 0 1px var(--brand)}
+
+/* ---- journey strip ---- */
+.journey{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,1fr);gap:12px;overflow-x:auto;padding:4px 2px 12px;margin:20px 0}
+.jc{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font:13.5px/1.45 var(--sans);position:relative}
+.jc h5{margin:0 0 8px;font:700 15px var(--sans)}
+.jc dl{margin:0}.jc dt{font:600 12.5px var(--sans);color:var(--ink2);margin-top:6px}.jc dd{margin:0;font:12.8px/1.4 var(--mono);overflow-wrap:anywhere}
+.jc .n{position:absolute;right:12px;top:10px;width:24px;height:24px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font:700 12.5px var(--sans)}
+
+/* ---- quiz ---- */
+.quiz{margin:26px 0;border:1px solid var(--line);border-radius:16px;background:var(--surface);padding:20px 22px 12px}
+.quiz>h4{margin:0 0 4px;font-size:20px}
+.quiz .qsub{font:500 14px var(--sans);color:var(--ink2);margin-bottom:14px}
+.q{padding:14px 0;border-top:1px solid var(--line)}
+.q p.qt{font:600 17px/1.45 var(--sans);margin:0 0 10px}
+.opt{display:block;width:100%;text-align:left;font:400 16px/1.45 var(--serif);padding:10px 14px;margin:0 0 8px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);cursor:pointer}
+.opt:hover:not(:disabled){border-color:var(--brand)}
+.opt.right{border-color:var(--good);background:var(--good-soft)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.opt:disabled{cursor:default}
+.why2{font:15.5px/1.5 var(--sans);padding:8px 12px;border-radius:10px;background:var(--surface2);margin:4px 0 6px}
+.score{font:700 16px var(--sans);padding:12px 0 6px}
+
+/* ---- stepper ---- */
+.stepper{margin:26px 0;border:1px solid var(--line);border-radius:18px;background:var(--surface);overflow:hidden}
+.sttabs{display:flex;flex-wrap:wrap;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--surface2)}
+.sttabs button{font:600 14.5px var(--sans);padding:8px 14px;border-radius:99px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.sttabs button[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#fff}
+.stbody{padding:18px 22px 20px}
+.stblurb{font:500 15.5px var(--sans);color:var(--ink2);margin:0 0 14px}
+.stage-strip{display:flex;gap:6px;margin:0 0 16px}
+.stage-strip span{flex:1;text-align:center;font:600 12.5px var(--sans);padding:6px 2px;border-radius:8px;background:var(--surface2);color:var(--ink2)}
+.stage-strip span.on{background:var(--brand);color:#fff}
+.stage-strip span.past{background:var(--brand-soft);color:var(--brand-ink)}
+.stcard{border-radius:14px;border:1.5px solid var(--line);padding:14px 18px 6px;background:var(--bg)}
+.stcard.warn{border-color:var(--warn);background:var(--warn-soft)}
+.stcard.err{border-color:var(--bad);background:var(--bad-soft)}
+.stcard .where{font:700 15px var(--sans);margin-bottom:4px}
+.stcard p{font-size:17px;margin:0 0 10px}
+.tray{margin:6px 0 10px;border-radius:10px;background:var(--code-bg);color:var(--code-ink);padding:10px 14px;font:13px/1.6 var(--mono);overflow-x:auto}
+.tray .tl{font:600 12px var(--sans);color:#9FB0C2;margin-bottom:4px}
+.tray .k{color:#7FD1C9}.tray .v{color:#F4D58A}
+.stnav{display:flex;align-items:center;gap:10px;margin-top:14px;font-family:var(--sans)}
+.stnav button{font:700 14.5px var(--sans);padding:9px 18px;border-radius:99px;border:0;background:var(--brand);color:#fff;cursor:pointer}
+.stnav button.ghost{background:var(--surface2);color:var(--ink)}
+.stnav button:disabled{opacity:.4;cursor:default}
+.stnav .ct{margin-left:auto;font-size:14px;color:var(--ink2)}
+
+/* ---- misc ---- */
+.done-row{display:flex;align-items:center;gap:14px;margin-top:34px;font-family:var(--sans)}
+.done-btn{font:700 15.5px var(--sans);padding:11px 22px;border-radius:99px;border:2px solid var(--brand);background:transparent;color:var(--brand-ink);cursor:pointer}
+.done-btn[aria-pressed="true"]{background:var(--brand);color:#fff}
+.checklist{list-style:none;padding:0;margin:14px 0}
+.checklist li{display:flex;gap:12px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line);font-size:17px;line-height:1.5}
+.checklist input{margin-top:6px;width:19px;height:19px;accent-color:var(--brand)}
+.gloss{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px 28px}
+.gloss div{padding:8px 0;border-bottom:1px solid var(--line);font-size:16.5px;line-height:1.5}
+.gloss b{font-family:var(--sans)}
+.tag-live{font:700 12px var(--sans);background:var(--bad-soft);color:var(--bad);padding:2px 8px;border-radius:99px}
+footer{font:14.5px/1.5 var(--sans);color:var(--ink2);padding-top:10px}
+@media (max-width:620px){ol.steps>li{padding-right:16px}.stepbtn{position:static;display:block;margin:6px 0 8px}}
+a.gl{color:inherit;text-decoration:none;border-bottom:1.6px dotted var(--brand)}
+a.gl:hover{background:var(--brand-soft)}
+.gl-demo{border-bottom:1.6px dotted var(--brand)}
+.gloss div:target{background:var(--accent-soft);border-radius:8px;padding-left:10px;padding-right:10px}
+details.codebox{margin:16px 0 22px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+details.codebox>summary{padding:12px 16px;font-size:15px}
+details.codebox .cw{position:relative;padding:0 12px 12px}
+details.codebox .copy{top:10px;right:22px}
+@media print{.rail,.railbtn,.stepbtn,.copy,.done-row{display:none!important}.shell{display:block}body{background:#fff}details.rv>div{display:block}}
+
+/* ===== short guide additions ===== */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:60}
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:var(--bg);border-bottom:1px solid var(--line);font-family:var(--sans)}
+.topbar .in{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:14px;padding:10px clamp(14px,3vw,32px)}
+.topbar .brand{font-weight:700;font-size:15px;white-space:nowrap;color:var(--ink);text-decoration:none}
+.topbar nav{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex:1}
+.topbar nav::-webkit-scrollbar{display:none}
+.topbar nav a{flex:0 0 auto;font-size:13.5px;font-weight:600;padding:6px 11px;border-radius:99px;text-decoration:none;color:var(--ink2);border:1px solid transparent}
+.topbar nav a:hover{background:var(--surface2)}
+.topbar nav a.on{background:var(--brand-soft);color:var(--brand-ink)}
+.topbar nav a.done{border-color:var(--good);color:var(--good)}
+.topbar .meter{height:3px;background:var(--surface2)}
+.topbar .meter i{display:block;height:100%;width:0;background:var(--brand);transition:width .4s}
+.page{max-width:1040px;margin:0 auto;padding:28px clamp(16px,4vw,48px) 100px}
+.page section{margin-bottom:64px}
+.page h2.sec{font-size:clamp(26px,3.2vw,36px);margin-bottom:8px}
+.sub2{font:500 15px var(--sans);color:var(--ink2);margin:0 0 18px}
+.timeline{display:flex;gap:4px;margin:18px 0 6px;font-family:var(--sans)}
+.timeline a{display:block;text-decoration:none;color:var(--ink);min-width:0}
+.timeline .bar2{height:34px;border-radius:8px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;font:700 13px var(--sans);color:var(--brand-ink)}
+.timeline a.setup .bar2{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.timeline .lb{font-size:11.5px;color:var(--ink2);margin-top:4px;text-align:center;line-height:1.2}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:22px clamp(14px,3vw,28px) 24px}
+.step .sh{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.step .num{width:44px;height:44px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font:700 20px var(--sans)}
+.step h2{font-size:clamp(22px,2.8vw,30px)}
+.step .min{margin-left:auto;font:700 13px var(--sans);padding:4px 12px;border-radius:99px;background:var(--accent-soft);color:var(--ink)}
+.step .goal{margin:10px 0 4px;font-size:18px;color:var(--ink2)}
+.step .fig{margin:14px 0 18px}
+.step h3{font-size:18px;margin:22px 0 10px}
+.cchips{display:grid;gap:8px}
+.cchip{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--accent);background:var(--accent-soft);border-radius:12px;font:600 15px var(--sans)}
+.cchip .cb{padding:4px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--line)}
+.cchip .arr{font:700 15px var(--mono);color:var(--ink)}
+.cchip em{font:500 14px var(--sans);color:var(--ink2);font-style:normal;flex-basis:100%}
+.addcard{border:1px solid var(--line);border-radius:14px;margin:0 0 12px;background:var(--bg);overflow:hidden}
+.addcard .ah{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:12px 16px 4px;font-family:var(--sans)}
+.addcard .ah b{font-size:17px}
+.addcard .ty{font:600 12.5px var(--sans);padding:2px 10px;border-radius:99px;background:var(--surface2);color:var(--ink2)}
+.addcard .does{padding:0 16px 10px;margin:0;font-size:16px;color:var(--ink2);line-height:1.5}
+.set{width:100%;border-collapse:collapse;font:14.5px/1.45 var(--sans)}
+.set td{padding:8px 16px;border-top:1px solid var(--line);vertical-align:top}
+.set td:first-child{width:34%;font-weight:600;color:var(--ink2)}
+.set .v{font:13.5px/1.5 var(--mono);overflow-wrap:anywhere;background:var(--surface);padding:6px 10px;border-radius:8px;border:1px solid var(--line);display:block}
+.set .hint{display:block;font-size:12.5px;color:var(--ink2);margin-top:3px}
+.vrow{display:flex;gap:8px;align-items:flex-start}
+.vrow .v{flex:1}
+.cp{flex:0 0 auto;font:700 12px var(--sans);padding:7px 11px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.cp.ok{background:var(--good);border-color:var(--good);color:#fff}
+.step .co{margin:16px 0}
+.stepfoot{display:flex;align-items:center;gap:12px;margin-top:18px}
+.up{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px clamp(14px,3vw,26px) 20px;margin:0 0 18px}
+.up h3{font-size:22px;margin:0 0 4px}
+.up .tag{font:700 12.5px var(--sans);padding:3px 11px;border-radius:99px;background:var(--surface2);color:var(--ink2);margin-right:8px}
+.up .fig{margin:14px 0}
+.up ol{padding-left:1.3em;margin:6px 0 12px}
+.up li{margin:.3em 0;font-size:16.5px}
+.trow td:first-child{font-weight:600}
+.qwrap{margin-top:0}
+@media (max-width:640px){.topbar .brand{display:none}.set td:first-child{width:auto;display:block;border-top:0;padding-bottom:0}.set td{display:block;border-top:0}.set tr{display:block;border-top:1px solid var(--line);padding:6px 0}}
+
+/* ===== block-style guide ===== */
+.topbar .track{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex:1;padding:2px}
+.topbar .track::-webkit-scrollbar{display:none}
+.topbar .track a{flex:0 0 auto;min-width:32px;height:32px;display:grid;place-items:center;padding:0 8px;border-radius:99px;border:2px solid var(--line);font:700 13.5px var(--sans);color:var(--ink2);text-decoration:none;background:var(--surface)}
+.topbar .track a.on{border-color:var(--brand);color:var(--brand-ink);background:var(--brand-soft)}
+.topbar .track a.done{background:var(--good);border-color:var(--good);color:#fff}
+.of{font:600 14px var(--sans);color:var(--ink2);margin-bottom:2px}
+.step .num{width:52px;height:52px;font-size:24px}
+h2.sec.level{margin:34px 0 14px;color:var(--brand-ink)}
+.small{font:500 15px var(--sans);color:var(--ink2);margin:6px 0 0}
+.step ol.steps.plain>li{font-size:19px}
+.step .fig.big{background:var(--surface2)}
+ol.steps.plain>li{padding-right:16px}
+ol.steps.plain>li b{color:var(--ink)}
+.does2{font-size:18px;margin:14px 0 6px}
+.fillh{font:700 16px var(--sans);margin:18px 0 8px}
+.renamebar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:12px 0 4px;font:500 16px var(--sans);color:var(--ink2)}
+.renamebar b{color:var(--ink)}
+.magic{display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:16px 18px;border-radius:16px;background:var(--violet-soft);border:2px dashed var(--violet);margin:14px 0;font:500 16px/1.5 var(--sans)}
+.cp.big{font-size:17px;padding:12px 22px;background:var(--violet);border-color:var(--violet);color:#fff}
+.cp.big.ok{background:var(--good);border-color:var(--good)}
+.drag{padding:12px 16px;border-radius:14px;background:var(--accent-soft);border:2px solid var(--accent);margin:8px 0;font:500 17px/1.5 var(--sans)}
+.game{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:14px 14px 18px}
+.game svg{display:block;width:100%;height:auto;touch-action:none;font-family:var(--sans);user-select:none}
+.gmsg{font:700 18px var(--sans);min-height:30px;text-align:center;margin:6px 0 10px}
+.gbtn{display:flex;gap:10px;justify-content:center}
+.gbtn button{font:700 15px var(--sans);padding:9px 18px;border-radius:99px;border:1.5px solid var(--brand);background:transparent;color:var(--brand-ink);cursor:pointer}
+details.peek{margin:10px 0;font-family:var(--sans)}
+details.peek>summary{cursor:pointer;font-weight:600;font-size:15px;color:var(--brand-ink)}
+.wordsgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px 26px}
+.wordsgrid div{padding:8px 0;border-bottom:1px solid var(--line);font-size:17px;line-height:1.5}
+.wordsgrid b{font-family:var(--sans)}
+.three{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:20px 0}
+.three .card2{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;font:500 16.5px/1.5 var(--sans)}
+.three .card2 b{display:block;font-size:19px;margin-bottom:4px}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="in">
+  <a class="brand" href="#top">Emailer</a>
+  <nav class="track" id="track" aria-label="Steps"></nav>
+</div><div class="meter" role="progressbar" aria-label="Your progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="pbar"></i></div></header>
+
+<main class="page" id="top">
+<section id="intro" style="margin-bottom:44px">
+  <h1 style="font-size:clamp(34px,5.4vw,56px);max-width:18ch;margin-bottom:16px">Build Automated Emailer Workflow in n8n: a hands-on Guide</h1>
+  <p class="lede">You will make a little robot. It reads a list of schools. It writes one email for each school. You do not write any code. You just <b>join dots</b>.</p>
+  <ul class="chips"><li>About 30 minutes</li><li>17 tiny steps</li><li>No email is ever sent. They wait as drafts.</li></ul>
+  <div class="heroviz"><svg viewBox="0 0 760 180" role="img" aria-label="One spreadsheet row goes through an n8n workflow and becomes one Gmail draft with an attachment">
+      <defs><marker id="ha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--axis)"/></marker></defs>
+      <rect x="24" y="24" width="290" height="132" rx="14" fill="var(--surface)" stroke="var(--axis)" stroke-width="1.6"/>
+      <rect x="24" y="24" width="290" height="32" rx="14" fill="var(--k-app)" fill-opacity=".14"/>
+      <rect x="24" y="44" width="290" height="12" fill="var(--k-app)" fill-opacity=".14"/>
+      <text x="40" y="46" font-size="13" font-weight="700" fill="var(--ink)">One row in the master sheet</text>
+      <text x="40" y="82" font-size="12.5" fill="var(--ink2)">School</text><text x="150" y="82" font-size="12.5" fill="var(--ink)">Riverbend Public School</text>
+      <text x="40" y="106" font-size="12.5" fill="var(--ink2)">Coordinator</text><text x="150" y="106" font-size="12.5" fill="var(--ink)">coordinator@riverbend…</text>
+      <text x="40" y="130" font-size="12.5" fill="var(--ink2)">Students ranked</text><text x="150" y="130" font-size="12.5" fill="var(--ink)">42</text>
+      <path d="M314 90H350" stroke="var(--axis)" stroke-width="1.8" fill="none" marker-end="url(#ha)"/>
+      <rect x="352" y="70" width="140" height="40" rx="20" fill="var(--brand)" fill-opacity=".14" stroke="var(--brand)" stroke-width="1.8"/>
+      <text x="422" y="95" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--brand-ink)">n8n workflow</text>
+      <path d="M492 90H526" stroke="var(--axis)" stroke-width="1.8" fill="none" marker-end="url(#ha)"/>
+      <rect x="528" y="24" width="208" height="132" rx="14" fill="var(--surface)" stroke="var(--axis)" stroke-width="1.6"/>
+      <rect x="528" y="24" width="208" height="32" rx="14" fill="var(--k-decision)" fill-opacity=".14"/>
+      <rect x="528" y="44" width="208" height="12" fill="var(--k-decision)" fill-opacity=".14"/>
+      <text x="544" y="46" font-size="13" font-weight="700" fill="var(--ink)">Gmail draft</text>
+      <text x="544" y="80" font-size="12" fill="var(--ink2)">Subject: Results</text>
+      <text x="544" y="98" font-size="12" fill="var(--ink2)">Riverbend Public School</text>
+      <rect x="544" y="114" width="150" height="26" rx="13" fill="var(--k-shape)" fill-opacity=".16" stroke="var(--k-shape)"/>
+      <text x="619" y="131" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">results.xlsx</text>
+    </svg></div>
+</section>
+
+<section id="practice">
+  <h2 class="sec">Play first</h2>
+  <p class="sub2" style="font-size:18px">Every block has dots. A line joins one block’s <b>right</b> dot to the next block’s <b>left</b> dot. Try it now:</p>
+  <div class="game">
+    <div id="game"></div>
+    <div class="gmsg" id="gmsg" aria-live="polite">Press the yellow dot. Drag it onto the white dot.</div>
+    <div class="gbtn"><button type="button" id="greset">Try again</button><button type="button" id="gshow">Show me</button></div>
+  </div>
+</section>
+
+<div id="steps"></div>
+
+<section id="help" style="margin-top:40px">
+  <h2 class="sec">If it does not work</h2>
+  <div class="tscroll"><table class="tbl"><thead><tr><th>What you see</th><th>Why</th><th>What to do</th></tr></thead><tbody id="trouble-rows"></tbody></table></div>
+  <p style="color:var(--ink2);font-size:17px">Want to attach each school’s results file too? That is the next level. Ask for it when you are ready.</p>
+</section>
+
+<section id="words" style="margin-bottom:0">
+  <h2 class="sec">Words you may see</h2>
+  <div class="wordsgrid" id="wordsgrid"></div>
+  <footer><p>Every school, person and email address in this guide is made up. Your ticks are saved in this browser only.</p></footer>
+</section>
+</main>
+<script>
+/* ---------- Graph renderer (with connection ports, new-node halos, highlighted links) ---------- */
+const NW = 150, NH = 46;
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const dims = n => ({ w: n.w || NW, h: n.h || NH });
+function anchor(n, side) {
+  const { w, h } = dims(n);
+  return side === 'R' ? [n.x + w / 2, n.y] : side === 'L' ? [n.x - w / 2, n.y] : side === 'T' ? [n.x, n.y - h / 2] : [n.x, n.y + h / 2];
+}
+function outPt(n, i) {           // output dot on the right edge
+  const { w, h } = dims(n); const dy = (n.outs || [0])[i || 0];
+  const inset = n.kind === 'decision' ? 16 * Math.abs(dy) / (h / 2) : 0;
+  return [n.x + w / 2 - inset, n.y + dy];
+}
+function inPt(n) { const { w } = dims(n); return [n.x - w / 2, n.y]; }
+function edgePath(a, b, s) {
+  const [sa, sb] = s.split('-');
+  const p = anchor(a, sa), q = anchor(b, sb);
+  const hz = (sa === 'R' || sa === 'L') && (sb === 'R' || sb === 'L');
+  const vt = (sa === 'T' || sa === 'B') && (sb === 'T' || sb === 'B');
+  if (hz) { if (p[1] === q[1]) return `M${p[0]} ${p[1]}H${q[0]}`; const m = (p[0] + q[0]) / 2; return `M${p[0]} ${p[1]}H${m}V${q[1]}H${q[0]}`; }
+  if (vt) { if (p[0] === q[0]) return `M${p[0]} ${p[1]}V${q[1]}`; const m = (p[1] + q[1]) / 2; return `M${p[0]} ${p[1]}V${m}H${q[0]}V${q[1]}`; }
+  if (sa === 'R' || sa === 'L') return `M${p[0]} ${p[1]}H${q[0]}V${q[1]}`;
+  return `M${p[0]} ${p[1]}V${q[1]}H${q[0]}`;
+}
+function nodeSVG(n) {
+  const { w, h } = dims(n);
+  const k = n.kind || 'flow';
+  const x = n.x - w / 2, y = n.y - h / 2;
+  const col = k === 'ghost' ? 'var(--k-ghost)' : `var(--k-${k})`;
+  const lines = String(n.label).split('\n');
+  const lh = 15, ty0 = n.y - (lines.length - 1) * lh / 2 + 4.5;
+  const future = n.state === 'future';
+  const dash = (k === 'ghost' || n.disabled || future) ? ' stroke-dasharray="5 4"' : '';
+  const shp = n.shape || (k === 'decision' ? 'hex' : (k === 'trigger' || k === 'ghost') ? 'pill' : 'rect');
+  const hexPts = (g) => { const c = 16; return `${x - g + c},${y - g} ${x + w + g - c},${y - g} ${x + w + g},${n.y} ${x + w + g - c},${y + h + g} ${x - g + c},${y + h + g} ${x - g},${n.y}`; };
+  let shape = '', halo = '';
+  if (shp === 'hex') {
+    shape = `<polygon points="${hexPts(0)}" fill="var(--surface)"/><polygon points="${hexPts(0)}" fill="${col}" fill-opacity=".14" stroke="${col}" stroke-width="1.6"${dash}/>`;
+    if (n.state === 'new') halo = `<polygon points="${hexPts(5)}" fill="none" stroke="var(--accent)" stroke-width="3.5"/>`;
+  } else if (shp === 'pill') {
+    shape = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h / 2}" fill="var(--surface)"/><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h / 2}" fill="${col}" fill-opacity="${k === 'ghost' ? 0.05 : 0.14}" stroke="${col}" stroke-width="1.6"${dash}/>`;
+    if (n.state === 'new') halo = `<rect x="${x - 5}" y="${y - 5}" width="${w + 10}" height="${h + 10}" rx="${h / 2 + 5}" fill="none" stroke="var(--accent)" stroke-width="3.5"/>`;
+  } else {
+    shape = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="var(--surface)"/><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="${col}" fill-opacity=".12" stroke="${col}" stroke-width="1.6"${dash}/><rect x="${x}" y="${y + 6}" width="4" height="${h - 12}" rx="2" fill="${col}"/>`;
+    if (n.state === 'new') halo = `<rect x="${x - 5}" y="${y - 5}" width="${w + 10}" height="${h + 10}" rx="12" fill="none" stroke="var(--accent)" stroke-width="3.5"/>`;
+  }
+  const tcol = k === 'ghost' ? 'var(--ink2)' : 'var(--ink)';
+  const text = `<text text-anchor="middle" font-size="12.5" font-weight="600" fill="${tcol}">` +
+    lines.map((l, i) => `<tspan x="${n.x}" y="${ty0 + i * lh}">${esc(l)}</tspan>`).join('') + '</text>';
+  let note = '';
+  if (n.note) note = `<text text-anchor="middle" font-size="11.5" fill="var(--ink2)">` + String(n.note).split('\n').map((l, i) => `<tspan x="${n.x}" y="${y + h + 16 + i * 14}">${esc(l)}</tspan>`).join('') + '</text>';
+  let ports = '';
+  if (n.ports) {
+    if (!n.noin) { const p = inPt(n); ports += `<circle cx="${p[0]}" cy="${p[1]}" r="4.5" fill="var(--surface)" stroke="var(--axis)" stroke-width="1.6"/>`; }
+    if (!n.noout) (n.outs || [0]).forEach((_, i) => { const p = outPt(n, i); ports += `<circle cx="${p[0]}" cy="${p[1]}" r="4.5" fill="var(--axis)"/>`; });
+  }
+  const badge = n.state === 'new' ? `<rect x="${x + w - 26}" y="${y - 16}" width="36" height="17" rx="8.5" fill="var(--accent)"/><text x="${x + w - 8}" y="${y - 4}" text-anchor="middle" font-size="10.5" font-weight="700" fill="#1B1F2A">new</text>` : '';
+  return `<g${n.disabled ? ' opacity=".8"' : ''}${future ? ' opacity=".42"' : ''}>${halo}${shape}${text}${note}${ports}${badge}</g>`;
+}
+function graphSVG(spec, pfx) {
+  pfx = pfx || 'g';
+  const byId = {};
+  spec.nodes.forEach(n => { byId[n.key || n.id] = n; });
+  let edges = '', dots = '';
+  (spec.edges || []).forEach(e => {
+    let d;
+    if (e.pts) d = 'M' + e.pts.map(p => p.join(' ')).join('L');
+    else d = edgePath(byId[e.a], byId[e.b], e.s || 'R-L');
+    const col = e.hl ? 'var(--accent)' : e.err ? 'var(--bad)' : 'var(--axis)';
+    const mk = e.noArrow ? '' : ` marker-end="url(#${pfx}-${e.hl ? 'ah' : e.err ? 'ae' : 'a'})"`;
+    edges += `<path d="${d}" fill="none" stroke="${col}" stroke-width="${e.hl ? 3.6 : 1.7}" stroke-linejoin="round"${(e.err || e.dash) ? ' stroke-dasharray="5 4"' : ''}${mk}/>`;
+    if (e.hl && e.pts) { const a = e.pts[0], b = e.pts[e.pts.length - 1]; dots += `<circle cx="${a[0]}" cy="${a[1]}" r="6.5" fill="var(--accent)" stroke="#1B1F2A" stroke-width="1.4"/><circle cx="${b[0]}" cy="${b[1]}" r="6.5" fill="var(--surface)" stroke="var(--accent)" stroke-width="3"/>`; }
+    if (e.label) edges += `<text x="${e.lx}" y="${e.ly}" font-size="11.5" font-weight="700" fill="${e.hl ? 'var(--ink)' : e.err ? 'var(--bad)' : 'var(--ink2)'}"${e.anchor ? ` text-anchor="${e.anchor}"` : ''}>${esc(e.label)}</text>`;
+  });
+  const nodes = spec.nodes.map(nodeSVG).join('');
+  const texts = (spec.texts || []).map(t => `<text x="${t.x}" y="${t.y}" font-size="${t.size || 12}" ${t.bold ? 'font-weight="700"' : ''} fill="${t.fill || 'var(--ink2)'}"${t.anchor ? ` text-anchor="${t.anchor}"` : ''}>${esc(t.t)}</text>`).join('');
+  const boxes = (spec.boxes || []).map(b => `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="14" fill="${b.fill || 'none'}" fill-opacity="${b.op || 0.06}" stroke="${b.stroke || 'var(--axis)'}" stroke-width="1.4" ${b.dash ? 'stroke-dasharray="6 5"' : ''}/>`).join('');
+  const mkr = (id, c) => `<marker id="${pfx}-${id}" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${c}"/></marker>`;
+  const defs = `<defs>${mkr('a', 'var(--axis)')}${mkr('ae', 'var(--bad)')}${mkr('ah', 'var(--accent)')}</defs>`;
+  return `<svg class="graph" viewBox="0 0 ${spec.w} ${spec.h}" style="min-width:${spec.min || 560}px" role="img" aria-label="${esc(spec.aria || 'Diagram')}">${defs}${boxes}${edges}${nodes}${dots}${texts}</svg>`;
+}
+const CODE = {
+ "coreClean": "// Prepare one ready-to-email item per school.\nconst cfg = $('Config').first().json;\nconst emailOk = /^[^@ ]+@[^@ ]+\\.[a-z]{2,24}$/;\nconst text = v => String(v ?? '').trim();\nconst safe = s => text(s).split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;');\nconst emails = v => text(v).split(/[;,\\n]/).map(e => e.trim().toLowerCase()).filter(e => emailOk.test(e));\nconst unique = list => list.filter((e, i) => list.indexOf(e) === i);\n\nreturn $input.all()\n  .filter(item => text(item.json['School']) !== '')          // ignore blank rows\n  .map((item, i) => {\n    const row = item.json;\n    const school = text(row['School']);\n    const to = unique(emails(row['Coordinator Email']));\n    const cc = unique(emails(row['Principal Email'])).filter(e => !to.includes(e));\n    const link = text(row['Drive Link']);\n    const m = link.match(/\\/d\\/([^/?#]+)/) || link.match(/[?&]id=([^&#]+)/);\n    const subject = (cfg.testMode ? '[TEST] ' : '') +\n      text(cfg.subjectTemplate).replace('{School}', school).replace('{State}', text(row['State']));\n    const htmlBody =\n      '<p>Dear ' + safe(row['Coordinator Name'] || 'Sir/Madam') + ',</p>' +\n      '<p>Greetings from ' + safe(cfg.organisationName) + '.</p>' +\n      '<p>We are pleased to share the results for <b>' + safe(school) + '</b>.</p>' +\n      '<ul><li>Students ranked: <b>' + safe(row['Students Ranked'] || '0') + '</b></li>' +\n      '<li>Teachers ranked: <b>' + safe(row['Teachers Ranked'] || '0') + '</b></li></ul>' +\n      '<p>The attached file has the rankings for your school. Please review it and share it with the people concerned.</p>' +\n      '<p>Warm regards,<br>' + safe(cfg.senderName) + '<br>' + safe(cfg.senderDesignation) + '<br>' + safe(cfg.organisationName) + '</p>';\n    return { json: {\n      rowKey: 'row-' + (i + 1), school,\n      to: to.join(', '), cc: cc.join(', '), hasRecipient: to.length > 0,\n      fileId: m ? m[1] : '', subject, htmlBody\n    } };\n  });",
+ "findLabel": "const name = String($('Config').first().json.labelName || '').trim();\nconst found = $input.all().map(i => i.json).find(l => l && l.name === name);\nreturn [{ json: { labelName: name, labelId: found ? found.id : '' } }];",
+ "pickNewest": "const school = $('Loop Over Schools').first().json;\nconst norm = v => (v === undefined || v === null) ? '' : String(v).trim();\n\n// keep only files whose name matches EXACTLY\nconst matches = $input.all().map(i => i.json)\n  .filter(f => f && f.id && norm(f.name) === norm(school.fileName));\n\nif (!matches.length) {\n  return [{ json: { rowKey: school.rowKey, fileId: '', warning: '', reason: 'file not found' } }];\n}\n\n// newest first\nmatches.sort((a, b) => String(b.modifiedTime || '').localeCompare(String(a.modifiedTime || '')));\n\nconst warning = matches.length > 1\n  ? matches.length + ' files named \"' + school.fileName + '\" found; used newest (' + matches[0].id + ')'\n  : '';\nreturn [{ json: { rowKey: school.rowKey, fileId: matches[0].id, warning, reason: '' } }];",
+ "buildReport": "const runAt = new Date().toISOString();\nconst all = $input.all().map(i => i.json).filter(r => r && r.school);\nconst count = s => all.filter(r => r.status === s).length;\n\n// collect every flagged email from the cleaning step\nlet issues = [];\ntry {\n  $('Clean & Validate Recipients').all().forEach(i => {\n    if (i.json.emailIssues) issues.push(i.json.school + ': ' + i.json.emailIssues);\n  });\n} catch (e) {}\n\nconst rows = all.map(r => ({ json: {\n  'Run At': runAt, 'School': r.school || '', 'State': r.state || '',\n  'TO': r.to || '', 'CC': r.cc || '', 'Attachment': r.attachmentName || '',\n  'Status': r.status || '', 'Reason / Error': r.reason || '', 'Email Issues': r.emailIssues || ''\n} }));\n\nrows.push({ json: {\n  'Run At': runAt, 'School': 'TOTALS', 'State': '', 'TO': '', 'CC': '', 'Attachment': '',\n  'Status': 'Total: ' + all.length + ' | Drafts created: ' + count('Draft created') +\n            ' | Sent: ' + count('Sent') + ' | Skipped: ' + count('Skipped') + ' | Errors: ' + count('Error'),\n  'Reason / Error': '',\n  'Email Issues': issues.length ? issues.join(' || ') : 'none'\n} });\nreturn rows;"
+};
+const BLOCKS_JSON = "{\n  \"name\": \"Automated Emailer (TEST)\",\n  \"nodes\": [\n    {\n      \"parameters\": {},\n      \"id\": \"a33cf072-1a4f-408f-ab71-7b1082c3a0f2\",\n      \"name\": \"Start\",\n      \"type\": \"n8n-nodes-base.manualTrigger\",\n      \"typeVersion\": 1,\n      \"position\": [\n        0,\n        0\n      ]\n    },\n    {\n      \"parameters\": {\n        \"assignments\": {\n          \"assignments\": [\n            {\n              \"id\": \"c1\",\n              \"name\": \"testMode\",\n              \"type\": \"boolean\",\n              \"value\": true\n            },\n            {\n              \"id\": \"c2\",\n              \"name\": \"masterFolderId\",\n              \"type\": \"string\",\n              \"value\": \"PASTE-YOUR-FOLDER-ID-HERE\"\n            },\n            {\n              \"id\": \"c3\",\n              \"name\": \"masterFileName\",\n              \"type\": \"string\",\n              \"value\": \"Schools\"\n            },\n            {\n              \"id\": \"c4\",\n              \"name\": \"schoolFilesFolderId\",\n              \"type\": \"string\",\n              \"value\": \"PASTE-YOUR-FOLDER-ID-HERE\"\n            },\n            {\n              \"id\": \"c5\",\n              \"name\": \"senderName\",\n              \"type\": \"string\",\n              \"value\": \"Your Name\"\n            },\n            {\n              \"id\": \"c6\",\n              \"name\": \"senderDesignation\",\n              \"type\": \"string\",\n              \"value\": \"Your Role\"\n            },\n            {\n              \"id\": \"c7\",\n              \"name\": \"organisationName\",\n              \"type\": \"string\",\n              \"value\": \"Your Team\"\n            },\n            {\n              \"id\": \"c8\",\n              \"name\": \"subjectTemplate\",\n              \"type\": \"string\",\n              \"value\": \"Results - {School} ({State})\"\n            },\n            {\n              \"id\": \"c10\",\n              \"name\": \"ccPrincipal\",\n              \"type\": \"boolean\",\n              \"value\": true\n            }\n          ]\n        },\n        \"options\": {}\n      },\n      \"id\": \"bb8ebac0-91b6-454b-bad4-47716399b8ee\",\n      \"name\": \"Config\",\n      \"type\": \"n8n-nodes-base.set\",\n      \"typeVersion\": 3.4,\n      \"position\": [\n        240,\n        0\n      ]\n    },\n    {\n      \"parameters\": {\n        \"resource\": \"fileFolder\",\n        \"searchMethod\": \"query\",\n        \"queryString\": \"=name = '{{ $('Config').first().json.masterFileName }}' and '{{ $('Config').first().json.masterFolderId }}' in parents and trashed = false\",\n        \"limit\": 1,\n        \"filter\": {},\n        \"options\": {\n          \"fields\": [\n            \"id\",\n            \"name\"\n          ]\n        }\n      },\n      \"id\": \"0a5d3e7e-c313-4ffd-9aae-c0cb320b0554\",\n      \"name\": \"Find Master File\",\n      \"type\": \"n8n-nodes-base.googleDrive\",\n      \"typeVersion\": 3,\n      \"position\": [\n        480,\n        0\n      ],\n      \"executeOnce\": true\n    },\n    {\n      \"parameters\": {\n        \"operation\": \"download\",\n        \"fileId\": {\n          \"__rl\": true,\n          \"mode\": \"id\",\n          \"value\": \"={{ $json.id }}\"\n        },\n        \"options\": {\n          \"googleFileConversion\": {\n            \"conversion\": {\n              \"sheetsToFormat\": \"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\"\n            }\n          }\n        }\n      },\n      \"id\": \"522ec74b-b0fe-4fec-9eda-4186d8fb2fe5\",\n      \"name\": \"Download Master File\",\n      \"type\": \"n8n-nodes-base.googleDrive\",\n      \"typeVersion\": 3,\n      \"position\": [\n        720,\n        0\n      ]\n    },\n    {\n      \"parameters\": {\n        \"operation\": \"xlsx\",\n        \"options\": {\n          \"headerRow\": true,\n          \"includeEmptyCells\": true,\n          \"rawData\": false,\n          \"sheetName\": \"School Directory\"\n        }\n      },\n      \"id\": \"02b1a049-8845-4703-8ae6-d4deb9fde55c\",\n      \"name\": \"Read School Directory\",\n      \"type\": \"n8n-nodes-base.extractFromFile\",\n      \"typeVersion\": 1.2,\n      \"position\": [\n        960,\n        0\n      ]\n    },\n    {\n      \"parameters\": {\n        \"jsCode\": \"const cfg = $('Config').first().json;\\nconst BS = String.fromCharCode(92);\\nconst NL = String.fromCharCode(10);\\nconst isTrue = v => v === true || String(v).toLowerCase() === 'true';\\nconst testMode = isTrue(cfg.testMode);\\nconst ccPrincipal = isTrue(cfg.ccPrincipal);\\nconst emailRe = new RegExp('^[^@ ]+@[^@ ]+[.][a-z]{2,24}$');\\nconst badTlds = ['comm', 'con', 'cmo', 'ocm', 'coom', 'cm', 'om', 'inn', 'orgg', 'nett'];\\nconst norm = v => (v === undefined || v === null) ? '' : String(v).trim();\\nconst splitEmails = v => norm(v).split(NL).join(';').split(',').join(';').split(';').map(e => e.trim().toLowerCase()).filter(e => e.length > 0);\\nconst uniq = a => a.filter((x, i) => a.indexOf(x) === i);\\nconst get = (row, name) => {\\n  if (row[name] !== undefined) return row[name];\\n  const key = Object.keys(row).find(k => k.trim().toLowerCase() === name.toLowerCase());\\n  return key ? row[key] : '';\\n};\\nconst esc = s => norm(s).split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;');\\nconst qEsc = s => norm(s).split(BS).join(BS + BS).split(\\\"'\\\").join(BS + \\\"'\\\");\\nconst generic = ['', 'coordinator', 'school coordinator', 'sir', 'madam', 'sir/madam', 'na', 'n/a', '-', 'principal', 'none', 'nil'];\\n\\nconst out = [];\\nlet idx = 0;\\nfor (const item of $input.all()) {\\n  const row = item.json;\\n  const school = norm(get(row, 'School'));\\n  if (!school) continue;\\n  idx += 1;\\n  const state = norm(get(row, 'State'));\\n  const city = norm(get(row, 'City'));\\n  const issuesRaw = norm(get(row, 'Email Issues (check manually)'));\\n  const issueList = splitEmails(issuesRaw);\\n  const extraIssues = [];\\n  const valid = list => list.filter(e => {\\n    if (issueList.indexOf(e) !== -1) return false;\\n    const tld = e.split('.').pop();\\n    if (!emailRe.test(e) || badTlds.indexOf(tld) !== -1) { extraIssues.push(e); return false; }\\n    return true;\\n  });\\n  let to;\\n  let cc = [];\\n  if (ccPrincipal) {\\n    to = uniq(valid(splitEmails(get(row, 'Coordinator Email'))));\\n    cc = uniq(valid(splitEmails(get(row, 'Principal Email')))).filter(e => to.indexOf(e) === -1);\\n  } else {\\n    to = uniq(valid(splitEmails(get(row, 'Send To (all valid emails)'))));\\n  }\\n  const allIssues = uniq(issueList.concat(extraIssues));\\n\\n  const names = norm(get(row, 'Coordinator Name')).split(';').map(n => n.trim()).filter(n => generic.indexOf(n.toLowerCase()) === -1);\\n  const greeting = names.length ? 'Dear ' + names.join(', ') + ',' : 'Dear Sir/Madam,';\\n\\n  const tpl = norm(cfg.subjectTemplate) || 'Results - {School} ({State})';\\n  const subject = (testMode ? '[TEST] ' : '') + tpl.split('{School}').join(school).split('{State}').join(state).split('{City}').join(city);\\n\\n  const students = norm(get(row, 'Students Ranked')) || '0';\\n  const teachers = norm(get(row, 'Teachers Ranked')) || '0';\\n  const fileName = norm(get(row, 'File Name'));\\n  const driveLink = norm(get(row, 'Drive Link'));\\n  const m = driveLink.match(new RegExp('/d/([^/?#]+)')) || driveLink.match(new RegExp('[?&]id=([^&#]+)'));\\n  const fileId = m ? m[1] : '';\\n\\n  const htmlBody = '<p>' + esc(greeting) + '</p>'\\n    + '<p>Greetings from the ' + esc(cfg.organisationName) + '.</p>'\\n    + '<p>We are pleased to share the results for <b>' + esc(school) + '</b>' + (city ? ', ' + esc(city) : '') + '.</p>'\\n    + '<ul><li>Students ranked: <b>' + esc(students) + '</b></li><li>Teachers ranked: <b>' + esc(teachers) + '</b></li></ul>'\\n    + '<p>We request you to review the results and share them with the concerned students and teachers.</p>'\\n    + '<p>For any clarification, please reply to this email.</p>'\\n    + '<p>Warm regards,<br>' + esc(cfg.senderName) + '<br>' + esc(cfg.senderDesignation) + '<br>' + esc(cfg.organisationName) + '</p>';\\n\\n  out.push({ json: {\\n    rowKey: 'row-' + idx,\\n    school, state, city,\\n    coordinatorName: norm(get(row, 'Coordinator Name')),\\n    to: to.join(', '),\\n    cc: cc.join(', '),\\n    hasRecipient: to.length > 0,\\n    emailIssues: allIssues.join('; '),\\n    studentsRanked: students,\\n    teachersRanked: teachers,\\n    fileName, driveLink, fileId,\\n    tenantId: norm(get(row, 'Tenant ID')),\\n    driveQuery: \\\"name = '\\\" + qEsc(fileName) + \\\"' and '\\\" + qEsc(cfg.schoolFilesFolderId) + \\\"' in parents and trashed = false\\\",\\n    greeting, subject, htmlBody,\\n  } });\\n}\\nreturn out;\"\n      },\n      \"id\": \"c32088f9-bb36-4f6e-8e31-105b072db8ab\",\n      \"name\": \"Clean & Validate Recipients\",\n      \"type\": \"n8n-nodes-base.code\",\n      \"typeVersion\": 2,\n      \"position\": [\n        1200,\n        0\n      ]\n    },\n    {\n      \"parameters\": {\n        \"options\": {}\n      },\n      \"id\": \"e656435d-fa5d-4313-ba96-0f3b82f2e6e5\",\n      \"name\": \"Loop Over Schools\",\n      \"type\": \"n8n-nodes-base.splitInBatches\",\n      \"typeVersion\": 3,\n      \"position\": [\n        204,\n        260\n      ]\n    },\n    {\n      \"parameters\": {\n        \"conditions\": {\n          \"options\": {\n            \"caseSensitive\": true,\n            \"leftValue\": \"\",\n            \"typeValidation\": \"loose\",\n            \"version\": 2\n          },\n          \"conditions\": [\n            {\n              \"id\": \"h1\",\n              \"leftValue\": \"={{ $json.hasRecipient }}\",\n              \"rightValue\": \"\",\n              \"operator\": {\n                \"type\": \"boolean\",\n                \"operation\": \"true\",\n                \"singleValue\": true\n              }\n            }\n          ],\n          \"combinator\": \"and\"\n        },\n        \"options\": {}\n      },\n      \"id\": \"830bd206-3452-41fd-8b43-ca57316d1039\",\n      \"name\": \"Has Valid Recipient?\",\n      \"type\": \"n8n-nodes-base.if\",\n      \"typeVersion\": 2.2,\n      \"position\": [\n        483,\n        260\n      ]\n    },\n    {\n      \"parameters\": {\n        \"resource\": \"draft\",\n        \"subject\": \"={{ $json.subject }}\",\n        \"emailType\": \"html\",\n        \"message\": \"={{ $json.htmlBody }}\",\n        \"options\": {\n          \"ccList\": \"={{ $json.cc }}\",\n          \"sendTo\": \"={{ $json.to }}\"\n        }\n      },\n      \"id\": \"80e60b31-0d8e-4be4-82d9-c9f001486b59\",\n      \"name\": \"Create Gmail Draft\",\n      \"type\": \"n8n-nodes-base.gmail\",\n      \"typeVersion\": 2.2,\n      \"position\": [\n        720,\n        260\n      ],\n      \"webhookId\": \"96f06ee8-b346-4527-a88f-8ae65df94bee\"\n    },\n    {\n      \"parameters\": {\n        \"amount\": 2\n      },\n      \"id\": \"df9d8662-7c92-4dc7-b9c9-0b6c893c7a3e\",\n      \"name\": \"Pause 2s\",\n      \"type\": \"n8n-nodes-base.wait\",\n      \"typeVersion\": 1.1,\n      \"position\": [\n        960,\n        260\n      ],\n      \"webhookId\": \"0a521bfb-0084-4139-9fae-f364727aed14\"\n    }\n  ],\n  \"connections\": {},\n  \"settings\": {\n    \"executionOrder\": \"v1\"\n  }\n}";
+const NAMES = {
+  start: 'Start', config: 'Config', findMaster: 'Find Master File', dlMaster: 'Download Master File',
+  readDir: 'Read School Directory', clean: 'Clean & Validate Recipients', loop: 'Loop Over Schools',
+  hasRecip: 'Has Valid Recipient?', draft: 'Create Gmail Draft', pause: 'Pause 2s'
+};
+/* the whole board: 10 blocks. Loop dots: top = done, bottom = loop. If dots: top = true, bottom = false. */
+const CN = [
+  { id: 'start', x: 74, y: 50, label: 'Start', kind: 'trigger', noin: true },
+  { id: 'config', x: 222, y: 50, label: 'Config', kind: 'shape' },
+  { id: 'findMaster', x: 370, y: 50, label: 'Find Master\nFile', kind: 'app' },
+  { id: 'dlMaster', x: 518, y: 50, label: 'Download\nMaster File', kind: 'app' },
+  { id: 'readDir', x: 666, y: 50, label: 'Read School\nDirectory', kind: 'shape' },
+  { id: 'clean', x: 814, y: 50, label: 'Clean &\nValidate', kind: 'code' },
+  { id: 'loop', x: 200, y: 185, label: 'Loop Over\nSchools', kind: 'flow', outs: [-9, 9] },
+  { id: 'hasRecip', x: 372, y: 185, label: 'Has Valid\nRecipient?', kind: 'decision', outs: [-11, 11] },
+  { id: 'draft', x: 518, y: 185, label: 'Create Gmail\nDraft', kind: 'app' },
+  { id: 'pause', x: 666, y: 185, label: 'Pause 2s', kind: 'flow' }
+].map(n => Object.assign({ w: 124, h: 46 }, n));
+
+/* the 11 joins, in order */
+const JOINS = [
+  { a: 'start', b: 'config' },
+  { a: 'config', b: 'findMaster' },
+  { a: 'findMaster', b: 'dlMaster' },
+  { a: 'dlMaster', b: 'readDir' },
+  { a: 'readDir', b: 'clean' },
+  { a: 'clean', b: 'loop', say: 'The line will curve around the other blocks. That is fine.' },
+  { a: 'loop', ao: 1, b: 'hasRecip', dot: 'BOTTOM', dotName: 'loop', say: 'Loop Over Schools has two dots on its right. Use the <b>bottom</b> one, called <b>loop</b>. Leave the top one, called <b>done</b>, empty.' },
+  { a: 'hasRecip', ao: 0, b: 'draft', dot: 'TOP', dotName: 'true', say: 'This block asks a yes/no question. The <b>top</b> dot means yes.' },
+  { a: 'draft', b: 'pause' },
+  { a: 'hasRecip', ao: 1, b: 'pause', dot: 'BOTTOM', dotName: 'false', say: 'The <b>bottom</b> dot means no. Schools with no email skip the draft and go straight to Pause 2s.' },
+  { a: 'pause', b: 'loop', say: 'This sends each school back to the loop, so the next school can start.' }
+];
+
+function boardSpec(opts) {
+  opts = opts || {};
+  const nodes = CN.map(n => Object.assign({}, n, { ports: true, state: 'done' }));
+  const by = Object.fromEntries(nodes.map(n => [n.id, n]));
+  const edges = [];
+  if (opts.lines) JOINS.forEach(j => {
+    const A = by[j.a], B = by[j.b], p = outPt(A, j.ao || 0), q = inPt(B); let pts;
+    if (j.a === 'clean' && j.b === 'loop') pts = [p, [892, p[1]], [892, 118], [112, 118], [112, q[1]], q];
+    else if (j.a === 'hasRecip' && j.ao === 1) pts = [p, [p[0] + 16, p[1]], [p[0] + 16, 252], [588, 252], [588, q[1]], q];
+    else if (j.a === 'pause') pts = [p, [760, p[1]], [760, 292], [112, 292], [112, q[1]], q];
+    else if (p[1] === q[1]) pts = [p, q];
+    else { const m = (p[0] + q[0]) / 2; pts = [p, [m, p[1]], [m, q[1]], q]; }
+    edges.push({ pts });
+  });
+  return { w: 910, h: opts.lines ? 318 : 250, min: 700, aria: opts.lines ? 'The finished board: ten blocks joined by lines' : 'The ten blocks as they appear on your board, not yet joined', nodes, edges, texts: [] };
+}
+function joinSpec(j) {
+  const big = { w: 160, h: 64 };
+  const mk = (id, x, y) => { const b = CN.find(n => n.id === id); return Object.assign({}, b, big, { x, y, ports: true, state: 'done' }, b.outs ? { outs: b.outs.map(v => v * 1.4) } : {}); };
+  const A = mk(j.a, 130, 100), B = mk(j.b, 450, 100);
+  const p = outPt(A, j.ao || 0), q = inPt(B);
+  const m = (p[0] + q[0]) / 2;
+  const pts = p[1] === q[1] ? [p, q] : [p, [m, p[1]], [m, q[1]], q];
+  const texts = [];
+  if (j.dot) texts.push({ x: p[0] + 8, y: p[1] + (j.dot === 'TOP' ? -24 : 36), t: 'this dot: ' + j.dot + (j.dotName ? ' (“' + j.dotName + '”)' : ''), size: 13, bold: true, fill: 'var(--ink)', anchor: 'start' });
+  return { w: 580, h: 190, min: 440, aria: `Join the right dot of ${NAMES[j.a]} to the left dot of ${NAMES[j.b]}`, nodes: [A, B], edges: [{ pts, hl: true }], texts };
+}
+
+const SHEET_TSV = [
+  ['School', 'State', 'City', 'Coordinator Name', 'Coordinator Email', 'Principal Email', 'Students Ranked', 'Teachers Ranked'],
+  ['Riverbend Public School', 'Demo State', 'Riverbend', 'Asha', 'yourname+riverbend@gmail.com', 'yourname+principal@gmail.com', '42', '5'],
+  ['Lakeview Academy', 'Demo State', 'Lakeview', '', '', '', '31', '4']
+].map(r => r.join('\t')).join('\n');
+
+const TROUBLE = [
+  ['A block says it has no data', 'The blocks before it have not run yet.', 'Press <b>Execute workflow</b> from the start.'],
+  ['Only one school got a draft', 'One line is missing.', 'Look at <b>Pause 2s</b>. It needs two lines going in and one line going back to <b>Loop Over Schools</b>.'],
+  ['A block shows a red warning', 'It does not know your Google account yet.', 'Click the block and choose <b>Sign in with Google</b>.'],
+  ['“Find Master File” finds nothing', 'The sheet name or the folder code is not exact.', 'The sheet must be called <b>Schools</b>. Check the folder code in <b>Config</b>.']
+];
+const WORDS = [
+  ['Block', 'A box on the board. n8n calls it a “node”.'],
+  ['Dot', 'The small circle on the edge of a block. Information leaves by the right dot and goes in by the left dot.'],
+  ['Line', 'The arrow you draw between two dots.'],
+  ['Board', 'The big empty page in n8n where the blocks sit. n8n calls it the “canvas”.'],
+  ['Draft', 'An email that is written and saved in Gmail, but not sent.'],
+  ['Folder code', 'The long mix of letters at the end of a Google Drive folder’s web address.']
+];
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const store = {
+  get(k) { try { return localStorage.getItem('emailer3:' + k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem('emailer3:' + k, v); } catch (e) { /* storage unavailable */ } }
+};
+function copyText(text, btn) {
+  const o = btn.textContent;
+  const ok = () => { btn.textContent = 'Copied ✓'; btn.classList.add('ok'); setTimeout(() => { btn.textContent = o; btn.classList.remove('ok'); }, 1600); };
+  const fb = () => { const t = document.createElement('textarea'); t.value = text; t.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); ok(); } catch (e) { btn.textContent = 'Press Ctrl+C'; } t.remove(); };
+  try { navigator.clipboard.writeText(text).then(ok, fb); } catch (e) { fb(); }
+}
+document.addEventListener('click', e => { const b = e.target.closest('.cp'); if (b) copyText(b.dataset.copy, b); });
+const cpBtn = (label, text, big) => `<button class="cp${big ? ' big' : ''}" type="button" data-copy="${esc(text)}">${esc(label)}</button>`;
+
+/* ---------- the joining game ---------- */
+(function () {
+  const box = $('#game'), msg = $('#gmsg');
+  const A = { x: 115, y: 100 }, B = { x: 445, y: 100 }, bw = 150, bh = 64;
+  const out = [A.x + bw / 2, A.y], inn = [B.x - bw / 2, B.y];
+  box.innerHTML = `<svg viewBox="0 0 560 200" id="gsvg" role="img" aria-label="Practice: drag the yellow dot on the right of Block A onto the white dot on the left of Block B">
+    <defs><marker id="gm" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--accent)"/></marker></defs>
+    <rect x="${A.x - bw / 2}" y="${A.y - bh / 2}" width="${bw}" height="${bh}" rx="12" fill="var(--k-app)" fill-opacity=".14" stroke="var(--k-app)" stroke-width="2"/>
+    <text x="${A.x}" y="${A.y + 5}" text-anchor="middle" font-size="16" font-weight="700" fill="var(--ink)">Block A</text>
+    <rect x="${B.x - bw / 2}" y="${B.y - bh / 2}" width="${bw}" height="${bh}" rx="12" fill="var(--k-shape)" fill-opacity=".14" stroke="var(--k-shape)" stroke-width="2"/>
+    <text x="${B.x}" y="${B.y + 5}" text-anchor="middle" font-size="16" font-weight="700" fill="var(--ink)">Block B</text>
+    <path id="gline" d="" fill="none" stroke="var(--accent)" stroke-width="5" stroke-linecap="round" marker-end="url(#gm)"/>
+    <circle id="gin" cx="${inn[0]}" cy="${inn[1]}" r="13" fill="var(--surface)" stroke="var(--ink2)" stroke-width="3"/>
+    <circle id="gout" cx="${out[0]}" cy="${out[1]}" r="13" fill="var(--accent)" stroke="var(--ink)" stroke-width="2.5" style="cursor:grab"/>
+    <text x="${out[0]}" y="${out[1] + 38}" text-anchor="middle" font-size="13" fill="var(--ink2)">grab me</text>
+    <text x="${inn[0]}" y="${inn[1] + 38}" text-anchor="middle" font-size="13" fill="var(--ink2)">drop here</text></svg>`;
+  const svg = $('#gsvg'), line = $('#gline'), dotOut = $('#gout'), dotIn = $('#gin');
+  let drag = false, joined = false;
+  const toSvg = e => { try { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const p = pt.matrixTransform(svg.getScreenCTM().inverse()); return [p.x, p.y]; } catch (err) { return inn; } };
+  const draw = p => line.setAttribute('d', `M${out[0]} ${out[1]}L${p[0]} ${p[1]}`);
+  const reset = () => { joined = false; drag = false; line.setAttribute('d', ''); dotIn.setAttribute('stroke', 'var(--ink2)'); dotIn.setAttribute('fill', 'var(--surface)'); msg.textContent = 'Press the yellow dot. Drag it onto the white dot.'; msg.style.color = ''; };
+  const win = () => { joined = true; draw(inn); dotIn.setAttribute('stroke', 'var(--good)'); dotIn.setAttribute('fill', 'var(--good)'); msg.textContent = 'Joined! That is the whole skill. 🎉'; msg.style.color = 'var(--good)'; };
+  dotOut.addEventListener('pointerdown', e => { if (joined) return; drag = true; try { svg.setPointerCapture(e.pointerId); } catch (err) { /* fine */ } e.preventDefault(); });
+  svg.addEventListener('pointermove', e => { if (drag) draw(toSvg(e)); });
+  svg.addEventListener('pointerup', e => {
+    if (!drag) return; drag = false;
+    const p = toSvg(e);
+    if (Math.hypot(p[0] - inn[0], p[1] - inn[1]) < 36) win();
+    else { line.setAttribute('d', ''); msg.textContent = 'Almost! Let go right on the white dot.'; msg.style.color = 'var(--warn)'; }
+  });
+  $('#greset').addEventListener('click', reset);
+  $('#gshow').addEventListener('click', () => { reset(); win(); });
+})();
+
+/* ---------- the steps ---------- */
+const list = items => `<ol class="steps plain">${items.map(i => `<li>${i}</li>`).join('')}</ol>`;
+const fig = svg => `<figure class="fig big"><div class="scroll">${svg}</div></figure>`;
+const addressBar = `<figure class="fig big"><div class="scroll"><svg class="graph" viewBox="0 0 640 110" style="min-width:420px" role="img" aria-label="A web address. The long code after folders slash is the folder code."><rect x="10" y="22" width="620" height="46" rx="23" fill="var(--surface)" stroke="var(--axis)" stroke-width="2"/><text x="34" y="52" font-size="15" fill="var(--ink2)" font-family="var(--mono)">drive.google.com/drive/folders/</text><rect x="400" y="30" width="206" height="30" rx="8" fill="var(--accent)" fill-opacity=".35" stroke="var(--accent)" stroke-width="2.5"/><text x="414" y="52" font-size="15" font-weight="700" fill="var(--ink)" font-family="var(--mono)">1AbCdEfGh1234…</text><text x="503" y="94" text-anchor="middle" font-size="14" font-weight="700" fill="var(--ink)">copy this part</text></svg></div></figure>`;
+let blocksJSON = '';
+const STEPS = [];
+STEPS.push({ level: 'Level 1 · Get ready', title: 'Make a folder in Google Drive', pic: addressBar, body: list(['Open <b>Google Drive</b>.', 'Make a new folder. Call it <b>n8n-practice</b>.', 'Open the folder. Look at the web address at the top.', 'The long code at the end is your <b>folder code</b>. Copy it and keep it safe. You will need it later.']) });
+STEPS.push({ title: 'Make the school list', body: list(['Inside that folder, make a new <b>Google Sheet</b>. Call it <b>Schools</b>. ' + cpBtn('Copy name', 'Schools'), 'Click the first cell, <b>A1</b>.', 'Press this button, then paste with <b>Ctrl+V</b> (Mac: <b>⌘V</b>): ' + cpBtn('Copy the list', SHEET_TSV, true), 'At the bottom, rename the tab to <b>School Directory</b>. ' + cpBtn('Copy name', 'School Directory'), 'Change the two emails to your own Gmail. Keep the part after the plus, like <b>yourname+riverbend@gmail.com</b>. Gmail still sends it to you.']) + '<div class="co why"><span class="t">Good to know</span><p>Lakeview has no email on purpose. You will watch the robot skip it.</p></div>' });
+STEPS.push({ title: 'Get your blocks', pic: () => fig(graphSVG(boardSpec({}), 'board0')), body: () => list(['Open <b>n8n</b>. Click <b>Create workflow</b>. You see an empty board.', 'Press this button: ' + cpBtn('Copy the blocks', blocksJSON, true), 'Click on the empty board. Press <b>Ctrl+V</b> (Mac: <b>⌘V</b>).', 'Ten blocks appear, like the picture. They are not joined yet. That is your job!', 'Can’t see them all? Click the small <b>fit</b> button at the bottom-left of the board.']) + '<details class="peek"><summary>Peek at what you copied (optional)</summary><pre class="code" id="peek"></pre></details>' });
+JOINS.forEach((j, i) => {
+  const A = NAMES[j.a], B = NAMES[j.b], n = i + 1;
+  const first = j.dot ? `Find <b>${A}</b>. Look at its <b>${j.dot}</b> dot on the right${j.dotName ? ` (it says “${j.dotName}”)` : ''}.` : `Find <b>${A}</b>. Look at the dot on its <b>right</b>.`;
+  STEPS.push({ level: i === 0 ? 'Level 2 · Join the dots' : '', title: `Join ${A} to ${B}`, join: n,
+    pic: () => fig(graphSVG(joinSpec(j), 'j' + n)),
+    body: list([first, `Press that dot and drag to the dot on the <b>left</b> of <b>${B}</b>. Let go.`, 'You see a line with an arrow going into <b>' + B + '</b>.']) + (j.say ? `<div class="co why"><span class="t">Good to know</span><p>${j.say}</p></div>` : '') + '<p class="small">Wrong line? Click it and press <b>Delete</b>. Then try again.</p>' });
+});
+STEPS.push({ level: 'Level 3 · Wake it up', title: 'Sign in on the blue blocks', pic: () => { const s = boardSpec({ lines: true }); s.nodes.forEach(n => { if (['findMaster', 'dlMaster', 'draft'].includes(n.id)) n.state = 'new'; }); return fig(graphSVG(s, 'board2')); },
+  body: list(['Three blocks need your Google account: <b>Find Master File</b>, <b>Download Master File</b> and <b>Create Gmail Draft</b>. They are outlined in yellow above.', 'Double-click one. A window opens.', 'Next to <b>Credential</b>, click <b>Sign in with Google</b>. Pick your account. Say yes.', 'Close the window. Do the same for the other two. The second Drive block may already be filled in.']) });
+STEPS.push({ title: 'Tell the robot who you are', body: list(['Double-click the <b>Config</b> block.', 'Find <b>masterFolderId</b>. Delete the grey words. Paste your folder code. Do the same for <b>schoolFilesFolderId</b>.', 'Change <b>senderName</b>, <b>senderDesignation</b> and <b>organisationName</b> to yours.', 'Close the window.']) + '<div class="tscroll"><table class="tbl" style="min-width:420px"><thead><tr><th>Config box</th><th>What to write</th></tr></thead><tbody><tr><td>masterFolderId</td><td>Your folder code</td></tr><tr><td>schoolFilesFolderId</td><td>Your folder code again</td></tr><tr><td>senderName</td><td>Your name</td></tr><tr><td>senderDesignation</td><td>Your job, like Teacher</td></tr><tr><td>organisationName</td><td>Your school or group</td></tr></tbody></table></div>' });
+STEPS.push({ title: 'Press Go!', body: list(['Click the orange <b>Execute workflow</b> button at the bottom.', 'Watch small numbers pop up on the lines.', 'Open <b>Gmail</b> and look in <b>Drafts</b>.']) + '<div class="co check"><span class="t">You should see</span><p>One draft for <b>Riverbend Public School</b>, starting with [TEST]. Lakeview has no draft, because it has no email. That is right! 🎉</p></div>' });
+
+const wrap = $('#steps');
+STEPS.forEach((s, i) => {
+  const k = i + 1;
+  if (s.level) { const h = document.createElement('h2'); h.className = 'sec level'; h.textContent = s.level; wrap.appendChild(h); }
+  const sec = document.createElement('section'); sec.className = 'step'; sec.id = 's' + k; sec.style.marginBottom = '22px';
+  sec.innerHTML = `<div class="sh"><span class="num">${k}</span><div><div class="of">Step ${k} of ${STEPS.length}</div><h2>${esc(s.title)}</h2></div></div>` +
+    (typeof s.pic === 'function' ? s.pic() : (s.pic || '')) +
+    (typeof s.body === 'function' ? s.body() : s.body) +
+    `<div class="stepfoot"><button class="done-btn" data-done="s${k}" aria-pressed="false">Done</button></div>`;
+  wrap.appendChild(sec);
+});
+
+/* the copied block file: loaded below by the page */
+function setBlocks(j) { blocksJSON = j; $$('.cp.big').forEach(b => { if (b.textContent.trim() === 'Copy the blocks') b.dataset.copy = j; }); const p = $('#peek'); if (p) p.textContent = j; }
+setBlocks(typeof BLOCKS_JSON === 'string' ? BLOCKS_JSON : '');
+
+$('#trouble-rows').innerHTML = TROUBLE.map(r => `<tr class="trow"><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
+$('#wordsgrid').innerHTML = WORDS.map(w => `<div><b>${esc(w[0])}.</b> ${esc(w[1])}</div>`).join('');
+
+/* ---------- progress ---------- */
+$('#track').innerHTML = STEPS.map((s, i) => `<a href="#s${i + 1}" data-sec="s${i + 1}" aria-label="Step ${i + 1}">${i + 1}</a>`).join('');
+const doneBtns = $$('[data-done]');
+function refresh() {
+  let n = 0;
+  doneBtns.forEach(b => { const on = b.getAttribute('aria-pressed') === 'true'; if (on) n++; const a = $(`#track a[data-sec="${b.dataset.done}"]`); if (a) a.classList.toggle('done', on); });
+  const pct = Math.round(100 * n / doneBtns.length);
+  $('#pbar').style.width = pct + '%'; $('.meter').setAttribute('aria-valuenow', String(pct));
+}
+doneBtns.forEach(b => {
+  const k = 'done:' + b.dataset.done;
+  const set = on => { b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.textContent = on ? 'Done ✓' : 'Done'; };
+  set(store.get(k) === '1');
+  b.addEventListener('click', () => { const on = b.getAttribute('aria-pressed') !== 'true'; set(on); store.set(k, on ? '1' : '0'); refresh(); });
+});
+refresh();
+if ('IntersectionObserver' in window) {
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) $$('#track a').forEach(a => { const on = a.dataset.sec === e.target.id; a.classList.toggle('on', on); if (on) a.scrollIntoView({ block: 'nearest', inline: 'center' }); }); }), { rootMargin: '-20% 0px -70% 0px' });
+  $$('.step').forEach(s => io.observe(s));
+}
+</script></body></html>
